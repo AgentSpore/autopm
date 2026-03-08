@@ -82,7 +82,6 @@ def analyze_repo(repo_path: str, max_commits: int = 20) -> dict:
 
     branch = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], repo_path) or "unknown"
 
-    # Get recent commits
     log_out = _run([
         "git", "log", f"-{max_commits}",
         "--pretty=format:%H|%an|%ai|%s",
@@ -105,7 +104,6 @@ def analyze_repo(repo_path: str, max_commits: int = 20) -> dict:
     last_commit_date = commits[0]["date"] if commits else datetime.now(timezone.utc).isoformat()
     days_ago = _days_since(last_commit_date)
 
-    # Most-touched files across recent commits
     file_counts: dict[str, int] = {}
     for c in commits:
         for f in c["files_changed"]:
@@ -144,8 +142,7 @@ async def save_session(db: aiosqlite.Connection, repo_path: str, summary: str, b
     await db.commit()
     rows = await db.execute_fetchall("SELECT * FROM sessions WHERE id = ?", (cur.lastrowid,))
     r = rows[0]
-    return {"id": r["id"], "repo_path": r["repo_path"], "branch": r["branch"],
-            "summary": r["summary"], "notes": r["notes"], "created_at": r["created_at"]}
+    return _row(r)
 
 
 async def list_sessions(db: aiosqlite.Connection, repo_path: str | None = None) -> list[dict]:
@@ -155,5 +152,22 @@ async def list_sessions(db: aiosqlite.Connection, repo_path: str | None = None) 
         )
     else:
         rows = await db.execute_fetchall("SELECT * FROM sessions ORDER BY created_at DESC LIMIT 50")
-    return [{"id": r["id"], "repo_path": r["repo_path"], "branch": r["branch"],
-             "summary": r["summary"], "notes": r["notes"], "created_at": r["created_at"]} for r in rows]
+    return [_row(r) for r in rows]
+
+
+async def get_session(db: aiosqlite.Connection, session_id: int) -> dict | None:
+    rows = await db.execute_fetchall("SELECT * FROM sessions WHERE id = ?", (session_id,))
+    return _row(rows[0]) if rows else None
+
+
+async def delete_session(db: aiosqlite.Connection, session_id: int) -> bool:
+    cur = await db.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+    await db.commit()
+    return cur.rowcount > 0
+
+
+def _row(r: aiosqlite.Row) -> dict:
+    return {
+        "id": r["id"], "repo_path": r["repo_path"], "branch": r["branch"],
+        "summary": r["summary"], "notes": r["notes"], "created_at": r["created_at"],
+    }
