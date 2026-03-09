@@ -230,3 +230,15 @@ async def update_session_notes(db: aiosqlite.Connection, session_id: int, notes:
         return None
     rows = await db.execute_fetchall("SELECT * FROM sessions WHERE id = ?", (session_id,))
     return _row(rows[0]) if rows else None
+
+
+async def search_sessions(db: aiosqlite.Connection, query: str) -> list[dict]:
+    """Full-text search across repo_path, summary, branch, and notes fields."""
+    q = f"%{query}%"
+    rows = await db.execute_fetchall(
+        """SELECT * FROM sessions
+           WHERE repo_path LIKE ? OR summary LIKE ? OR branch LIKE ? OR notes LIKE ?
+           ORDER BY created_at DESC""",
+        (q, q, q, q),
+    )
+    return [_row(r) for r in rows]
