@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Query
 
 from models import AnalyzeRequest, ContextReport, SessionCreate, SessionResponse
-from analyzer import init_db, analyze_repo, save_session, list_sessions, get_session, delete_session
+from analyzer import init_db, analyze_repo, save_session, list_sessions, get_session, delete_session, get_sessions_stats
 
 DB_PATH = "autopm.db"
 
@@ -24,7 +24,7 @@ app = FastAPI(
         "what changed, which files are hot, open TODOs, and suggested next steps. "
         "No more staring at old code wondering where you left off."
     ),
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
@@ -62,6 +62,12 @@ async def create_session(body: SessionCreate):
 async def get_sessions(repo_path: str | None = Query(None, description="Filter by repo path")):
     """List saved sessions, optionally filtered by repo path."""
     return await list_sessions(app.state.db, repo_path)
+
+
+@app.get("/sessions/stats")
+async def sessions_stats():
+    """Aggregate stats: total sessions, repos tracked, most active repo, repo breakdown."""
+    return await get_sessions_stats(app.state.db)
 
 
 @app.get("/sessions/{session_id}", response_model=SessionResponse)
