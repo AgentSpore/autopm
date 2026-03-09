@@ -171,3 +171,30 @@ def _row(r: aiosqlite.Row) -> dict:
         "id": r["id"], "repo_path": r["repo_path"], "branch": r["branch"],
         "summary": r["summary"], "notes": r["notes"], "created_at": r["created_at"],
     }
+
+async def get_sessions_stats(db: aiosqlite.Connection) -> dict:
+    """Aggregate stats across all saved sessions."""
+    rows = await db.execute_fetchall("SELECT * FROM sessions ORDER BY created_at DESC")
+    if not rows:
+        return {"total_sessions": 0, "repos_tracked": 0, "most_active_repo": None, "latest_session": None}
+
+    repo_counts: dict = {}
+    for r in rows:
+        path = r["repo_path"]
+        repo_counts[path] = repo_counts.get(path, 0) + 1
+
+    most_active = max(repo_counts, key=lambda k: repo_counts[k])
+    latest = _row(rows[0])
+
+    return {
+        "total_sessions": len(rows),
+        "repos_tracked": len(repo_counts),
+        "most_active_repo": most_active,
+        "most_active_session_count": repo_counts[most_active],
+        "latest_session": latest,
+        "repo_breakdown": [
+            {"repo": k, "session_count": v}
+            for k, v in sorted(repo_counts.items(), key=lambda x: -x[1])
+        ],
+    }
+
