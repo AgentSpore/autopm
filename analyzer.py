@@ -217,3 +217,16 @@ async def export_sessions_csv(db: aiosqlite.Connection, repo_path: str | None = 
         writer.writerow([r["id"], r["repo_path"], r["branch"] or "",
                          r["summary"] or "", r["notes"] or "", r["created_at"]])
     return buf.getvalue()
+
+
+async def update_session_notes(db: aiosqlite.Connection, session_id: int, notes: str | None) -> dict | None:
+    """Update the notes field of an existing session."""
+    cur = await db.execute(
+        "UPDATE sessions SET notes = ? WHERE id = ?",
+        (notes, session_id)
+    )
+    await db.commit()
+    if cur.rowcount == 0:
+        return None
+    rows = await db.execute_fetchall("SELECT * FROM sessions WHERE id = ?", (session_id,))
+    return _row(rows[0]) if rows else None
