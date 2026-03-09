@@ -198,3 +198,22 @@ async def get_sessions_stats(db: aiosqlite.Connection) -> dict:
         ],
     }
 
+
+
+async def export_sessions_csv(db: aiosqlite.Connection, repo_path: str | None = None) -> str:
+    """Export sessions to CSV text. Optionally filter by repo_path."""
+    import csv, io
+    q = "SELECT * FROM sessions ORDER BY created_at DESC"
+    params: list = []
+    if repo_path:
+        q = "SELECT * FROM sessions WHERE repo_path = ? ORDER BY created_at DESC"
+        params = [repo_path]
+    rows = await db.execute_fetchall(q, params)
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["id", "repo_path", "branch", "summary", "notes", "created_at"])
+    for r in rows:
+        writer.writerow([r["id"], r["repo_path"], r["branch"] or "",
+                         r["summary"] or "", r["notes"] or "", r["created_at"]])
+    return buf.getvalue()
