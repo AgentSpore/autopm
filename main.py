@@ -24,7 +24,7 @@ app = FastAPI(
         "what changed, which files are hot, open TODOs, and suggested next steps. "
         "No more staring at old code wondering where you left off."
     ),
-    version="0.4.0",
+    version="0.5.0",
     lifespan=lifespan,
 )
 
@@ -88,6 +88,16 @@ async def export_sessions(repo_path: str | None = Query(None, description="Filte
     csv_text = await export_sessions_csv(app.state.db, repo_path)
     return Response(content=csv_text, media_type="text/csv",
                     headers={"Content-Disposition": "attachment; filename=sessions.csv"})
+
+
+
+@app.patch("/sessions/{session_id}", response_model=SessionResponse)
+async def update_session(session_id: int, notes: str | None = None):
+    """Update the notes on a saved session. Useful for adding context after review."""
+    result = await update_session_notes(app.state.db, session_id, notes)
+    if not result:
+        raise HTTPException(404, "Session not found")
+    return result
 
 @app.delete("/sessions/{session_id}", status_code=204)
 async def remove_session(session_id: int):
