@@ -64,6 +64,12 @@ async def get_sessions(repo_path: str | None = Query(None, description="Filter b
     return await list_sessions(app.state.db, repo_path)
 
 
+
+@app.get("/sessions/search", response_model=list[SessionResponse])
+async def search_sessions_endpoint(q: str = Query(..., min_length=1, description="Search query — matches repo_path, summary, branch, or notes")):
+    """Search sessions by repo path, summary, branch, or notes. Useful for finding past work context."""
+    return await search_sessions(app.state.db, q)
+
 @app.get("/sessions/stats")
 async def sessions_stats():
     """Aggregate stats: total sessions, repos tracked, most active repo, repo breakdown."""
