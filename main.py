@@ -24,7 +24,7 @@ app = FastAPI(
         "what changed, which files are hot, open TODOs, and suggested next steps. "
         "No more staring at old code wondering where you left off."
     ),
-    version="0.3.0",
+    version="0.4.0",
     lifespan=lifespan,
 )
 
@@ -78,6 +78,16 @@ async def get_session_detail(session_id: int):
         raise HTTPException(404, "Session not found")
     return s
 
+
+
+
+@app.get("/sessions/export/csv")
+async def export_sessions(repo_path: str | None = Query(None, description="Filter by repo path")):
+    """Export all sessions as CSV (id, repo_path, branch, summary, notes, created_at)."""
+    from fastapi.responses import Response
+    csv_text = await export_sessions_csv(app.state.db, repo_path)
+    return Response(content=csv_text, media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=sessions.csv"})
 
 @app.delete("/sessions/{session_id}", status_code=204)
 async def remove_session(session_id: int):
